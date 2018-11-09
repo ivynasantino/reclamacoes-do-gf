@@ -1,7 +1,16 @@
 ---
 title: "Análise de sentimentos das reclamações de órgãos do governo federal"
-output: html_notebook
+date: "9 de novembro de 2018"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_float: yes
+  html_notebook:
+    toc: yes
+    toc_float: yes
 ---
+
 
 ```{r setup, warning=FALSE, include=FALSE}
 library(tidyverse)
@@ -10,36 +19,95 @@ theme_set(theme_minimal())
 
 ```
 
-Importando dados para um dataframe
-```{r, warning=FALSE, include=FALSE}
+### Descrição:
+
+A seguir iremos analisar as reclamações recebidas por dois órgãos do governo federal, sendo eles ANAC e INSS, e verificar a insatisfação do cliente quanto aos serviços desses órgãos públicos. Para isso, será utilizada a técnica de análise de sentimentos para detectar o nível de insastifação em cada reclamação, fazendo-se necessário o experimento humano de avaliação desse nível de insatisfação, feito pelo alunos da disciplina de Metodologia científica 2018.2 da UFCG, no qual cada reclamação era avaliada de 1 a 5, sendo que 1 equivalia a um nível de muito alto de insatisfação e 5 a um nível mais razoável de insatisfação. 
+
+
+### Importando dados para um dataframe
+```{r, warning=FALSE, message=FALSE}
 avaliacao_humana = read_csv("../data/3-avaliacao-humana/avaliacoes-20181030.csv")
 reclamacoes = read_csv("../data/3-avaliacao-humana/reclamacoes-avaliadas-20180703.csv")
 
 ```
 
-Tratando dados:
+### Análise exploratória: etapa 1
 
-- Transformar matrícula do aluno para string:
+A partir desse momento, iremos explorar um pouco das reclamações selecionadas.
 
-```{r, warning=FALSE, include=FALSE}
+#### A quantidade de caracteres em uma reclamação muda de um órgão federal para o outro?
+
+A princípio é necessário calcular a quantidade de caracteres de cada reclamação e posteriormente adicionar o dado comprimento ao dataframe.
+
+```{r, warning=FALSE, message=FALSE}
+reclamacoes <- reclamacoes %>% 
+    mutate(comprimento = str_length(reclamacao))
 
 ```
 
-Perguntas para etapa 1: analisar as reclamações selecionadas
-1 (Alice) Se muda a quantidade de caracteres(maior/menor) de um órgão federal para o outro
-2 (Joao) Verificar letras maiúsculas em cada reclamação, pontuação(!)
 
-```{r, warning=FALSE, include=FALSE}
+```{r, warning=FALSE, message=FALSE}
+reclamacoes %>% 
+  mutate(`Nível de insatisfação` = insatisfacao) %>% 
+  ggplot(aes(x = orgao,
+             y = comprimento,
+             color = `Nível de insatisfação`)) +
+  geom_jitter() +
+  labs(title = "Quantidade de caracteres das reclamações",
+       x = "Órgão fereral",
+       y = "Comprimento da reclamação")
+```
+
+[Conclusão da visualização]
+
+
+Uma forma comum de se demostrar insatisfação por meio da escrita digital é adicionar pontos de exclamação e letras maiúsculas. 
+
+####  A partir do comentário acima, seria válido fazer a verificação de letras maiúsculas em cada reclamação e sinais de pontuação como a exclamação(!)
+
+Assim como a visualizaação anterior, precisamos contabilizar a quantidade de letras maiúsculas e pontos de exclamação:
+
+```{r, warning=FALSE, message=FALSE}
 reclamacoes$numero_de_capslock <- str_count(reclamacoes$reclamacao,"\\b[A-Z]{2,}\\b")
 reclamacoes$numero_de_exclamacoes <- str_count(reclamacoes$reclamacao, "!")
 ```
 
-Perguntas para etapa 2: análise das avaliações humanas para as reclamações
+```{r, warning=FALSE, message=FALSE}
+reclamacoes %>% 
+  mutate(`Órgão federal` = orgao) %>% 
+  ggplot(aes(y = numero_de_capslock,
+             x = "",
+             fill = `Órgão federal`)) +
+  geom_violin() +
+  labs(title = "Quantidade de reclamações em caixa alta",
+       x = "",
+       y = "Número de caracteres em CAPS")
+```
 
-3 (Ivyna) Pessoas que receberam a mesma reclamação classificaram igualmente?
+Como podemos observar, a ANAC tem um número considerável de reclamações com caracteres em caixa alta, inclusive reclamações que ultrapassam a quantidade de 30 caracteres em caps. Já o INSS, tem uma presença menor de caracteres em caps em suas reclamações, inclusive com uma grande concentração de reclamações com caixa alta abaixo de 10 caracteres, um bom número, contando que início de frase comece com letra maiúscula, presença de nomes próprios, etc.
 
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
+reclamacoes %>% 
+  mutate(`Órgão federal` = orgao) %>% 
+  ggplot(aes(y = numero_de_exclamacoes,
+             x = "",
+             fill = `Órgão federal`)) +
+  geom_violin() +
+  labs(title = "Quantidade de exclamações (!) em cada reclamação",
+       x = "",
+       y = "Número de exclamações")
+```
+
+Já para o número de exclamações, temos o seguinte cenário: o INSS tem uma maior concentração desse caractere, no entanto o ANAC, tem algumas reclamações com uma presença de mais de 6 exclamações.
+
+### Análise exploratória: etapa 2
+
+Nesta etapa preparamos questionamentos para a análise das avaliações humanas para as reclamações.
+
+A princípio, uma breve sumarização dos dados contidos nos resultados da avaliação humana:
+
+```{r, warning=FALSE, message=FALSE}
 avaliacao_humana %>% 
     group_by(`ID da reclamação`) %>% 
     arrange(`ID da reclamação`) %>% 
@@ -51,6 +119,8 @@ avaliacao_humana %>%
 Como vemos, o desvio padrão das avaliações ficou muito baixo, o que mostra uma homogeneidade nos dados. Com isso, podemos concluir que as pessoas classificaram a reclamação com o mesmo grau de instatisfação.
 
 Além disso, podemos também responder outra pergunta acerca dos dados: os classificadores humanos foram, de forma geral, inviesados a avaliarem uma reclamação como mais ou menos insatisfeita. Como o desvio padrão foi baixo, podemos inferir que os classificadores humanos concordam entre si, mostrando que não houveram pessoas, pelo menos não de maneira expressiva, que classificasse uma reclamação num maior ou menor nível de satisfação. 
+
+#### Dessa maneira, podemos dizer que pessoas que receberam a mesma reclamação classificaram igualmente?
 
 ```{r, warning=FALSE, message=FALSE}
 distribuicao_avaliacao <- function(filtro) {
@@ -88,10 +158,3 @@ distribuicao_avaliacao(30:45)
 distribuicao_avaliacao(45:60)
 ```
 
-4 (Antunes) Desvio padrão da nota por pessoa
-5 (Paulo) Distribuição das notas por reclamação
-
-
-
-
-Obs.: índice de tendência central, sumarizar os dados

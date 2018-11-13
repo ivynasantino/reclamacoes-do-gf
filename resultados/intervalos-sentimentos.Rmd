@@ -1,0 +1,42 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(here)
+theme_set(theme_minimal())
+```
+
+```{r, warning=FALSE, message=FALSE}
+sentimentos <- read.csv(here("data/5-sentimentos/sentimento.csv"))
+
+```
+
+```{r, warning=FALSE, message=FALSE}
+max_op <- max(sentimentos$sentimento_op30)
+min_op <- min(sentimentos$sentimento_op30)
+```
+
+```{r, warning=FALSE, message=FALSE}
+max_sent <- max(sentimentos$sentimento_sent)
+min_sent <- min(sentimentos$sentimento_sent)
+```
+
+Teste para op
+
+```{r}
+intervalo <- min_op:max_op
+indx <- findInterval(intervalo,
+                     seq(-9, 14, by = 1))
+group <- seq(-9, 14, by = 1)
+ind <- seq(1, length(group), by = 1)
+labl1<-paste(group[ind],group[ind+1],sep="-")
+dat1<- data.frame(intervalo1=intervalo,
+                  satisfacao=labl1[indx],
+                  stringsAsFactors=FALSE)
+head(dat1)
+
+```
+

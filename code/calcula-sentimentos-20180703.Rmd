@@ -3,7 +3,7 @@ title: "Analisa sentimentos das reclamações"
 output: html_notebook
 ---
 
-```{r warning=FALSE}
+```{r warning=FALSE, message=FALSE}
 library(tidyverse)
 library(tidytext)
 library(here)
@@ -66,4 +66,17 @@ sentimentos = palavras_com_sentimento %>%
 sentimentos %>% 
     write_csv(here("data/5-sentimentos/sentimento.csv"))
 ```
+
+Detectar o mínimo e o máximo dos resu
+
+```{r, warning=FALSE, message=FALSE}
+max(sentimentos$sentimento_op30)
+min(sentimentos$sentimento_op30)
+```
+
+```{r, warning=FALSE, message=FALSE}
+max(sentimentos$sentimento_sent)
+min(sentimentos$sentimento_sent)
+```
+
 

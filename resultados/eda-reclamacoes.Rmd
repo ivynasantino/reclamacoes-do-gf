@@ -21,7 +21,7 @@ theme_set(theme_minimal())
 
 ### Descrição:
 
-A seguir iremos analisar as reclamações recebidas por dois órgãos do governo federal, sendo eles ANAC e INSS, e verificar a insatisfação do cliente quanto aos serviços desses órgãos públicos. Para isso, será utilizada a técnica de análise de sentimentos para detectar o nível de insastifação em cada reclamação, fazendo-se necessário o experimento humano de avaliação desse nível de insatisfação, feito pelo alunos da disciplina de Metodologia científica 2018.2 da UFCG, no qual cada reclamação era avaliada de 1 a 5, sendo que 1 equivalia a um nível de muito alto de insatisfação e 5 a um nível mais razoável de insatisfação. 
+A seguir, iremos analisar as reclamações recebidas por dois órgãos do governo federal, ANAC e INSS, a fim de verificar a insatisfação do cliente quanto aos serviços prestados por eles. Para isso, será utilizada a técnica de análise de sentimentos para detectar o nível de insastifação em cada reclamação. Num primeiro plano, foi realizado experimento humano de avaliação desse nível de insatisfação, feito pelo alunos da disciplina de Metodologia científica 2018.2 da UFCG, no qual cada reclamação era avaliada de 1 a 5, sendo que 1 equivalia a pouco insatisfeito e 5 muito insatisfeito.
 
 
 ### Importando dados para um dataframe
@@ -57,7 +57,7 @@ reclamacoes %>%
        x = "Órgão fereral",
        y = "Comprimento da reclamação")
 ```
-Como podemos ver no gráfico acima, o ANAC teve reclamações com número maior de caracteres e também com um nível maior de insatisfação. Já o INSS, teve uma maior homogeniedade de caracteres, só uma reclamação passou dos 1000 caracteres e com nota 5 insatisfação. A partir dessas conclusões podemos ver que reclamações que tiveram maior número de caracteres tambḿe teve  maior  número  de grau de insatisfação.
+Como podemos ver no gráfico acima, o ANAC teve reclamações com número maior de caracteres e também com um nível maior de insatisfação. Já o INSS, teve uma maior homogeniedade de caracteres, só uma reclamação passou dos 1000 caracteres e com nota 5 insatisfação. A partir dessas conclusões podemos ver que reclamações que tiveram maior número de caracteres também teve  maior número de grau de insatisfação.
 
 Uma forma comum de se demostrar insatisfação por meio da escrita digital é adicionar pontos de exclamação e letras maiúsculas. 
 

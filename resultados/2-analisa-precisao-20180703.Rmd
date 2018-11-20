@@ -3,7 +3,7 @@ title: "Análise da precisão"
 output: html_notebook
 ---
 
-```{r}
+```{r setup, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(here)
 library(modelr)
@@ -14,7 +14,7 @@ theme_set(theme_bw())
 
 ## Os dados
 
-```{r carrega}
+```{r, warning=FALSE, message=FALSE}
 
 reclamacoes = read_csv(here("data/3-avaliacao-humana/reclamacoes-avaliadas-20180703.csv"))
 sentimentos = read_csv(here("data/5-sentimentos/sentimento.csv"))
@@ -24,7 +24,7 @@ reclamacoes = reclamacoes %>% mutate(comprimento_reclamacao = str_length(reclama
 
 `reclamacoes_l` tem um formato long em vez de wide (explicado [aqui](https://sejdemyr.github.io/r-tutorials/basics/wide-and-long/)).
 
-```{r junta}
+```{r, message=FALSE, warning=FALSE}
 reclamacoes = reclamacoes %>% 
     left_join(sentimentos, by = "id")
 
@@ -40,11 +40,12 @@ reclamacoes_l %>% View()
 
 Converte polaridades para escala 0-5
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 # Faça você mesmo. Crie a variável polaridade_normalizada
-# reclamacoes_l = reclamacoes_l %>% 
-#     group_by(lexico) %>% 
-#     mutate(polaridade_normalizada = ALGOAQUI)
+reclamacoes_l = reclamacoes_l %>% 
+    group_by(lexico) %>% 
+    mutate(polaridade_normalizada = round(((4 * (polaridade - max(polaridade))) / (min(polaridade) - max(polaridade))) + 1))
+                                    
 ```
 
 Calcula o erro (SSE) por reclamação

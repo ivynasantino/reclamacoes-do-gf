@@ -16,25 +16,31 @@ theme_set(theme_bw())
 
 ```{r, warning=FALSE, message=FALSE}
 
-reclamacoes = read_csv(here("data/3-avaliacao-humana/reclamacoes-avaliadas-20180703.csv"))
+reclamacoes = read_csv(here("data/3-avaliacao-humana/reclamacoes-avaliadas-20181113.csv"))
 sentimentos = read_csv(here("data/5-sentimentos/sentimento.csv"))
 
-reclamacoes = reclamacoes %>% mutate(comprimento_reclamacao = str_length(reclamacao))
+reclamacoes = reclamacoes %>% 
+    mutate(comprimento_reclamacao = str_length(reclamacao))
 ```
 
 `reclamacoes_l` tem um formato long em vez de wide (explicado [aqui](https://sejdemyr.github.io/r-tutorials/basics/wide-and-long/)).
 
 ```{r, message=FALSE, warning=FALSE}
 reclamacoes = reclamacoes %>% 
-    left_join(sentimentos, by = "id")
+    left_join(sentimentos, 
+              by = "id")
 
 reclamacoes_l = reclamacoes %>%  
-    select(-palavras_op30, -palavras_sent, -grupo_avaliando) %>% 
+    select(-palavras_op30,
+           -palavras_sent, 
+           -grupo_avaliando) %>% 
     gather(key = "lexico", 
            value = "polaridade", 
-           sentimento_op30, sentimento_sent)
+           sentimento_op30, 
+           sentimento_sent)
 
-reclamacoes_l %>% View()
+reclamacoes_l %>% 
+    View()
 
 ```
 

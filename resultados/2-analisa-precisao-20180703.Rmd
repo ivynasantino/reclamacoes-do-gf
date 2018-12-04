@@ -8,6 +8,7 @@ library(tidyverse)
 library(here)
 library(modelr)
 library(broom)
+library(GGally)
 
 theme_set(theme_bw())
 ```
@@ -64,9 +65,34 @@ reclamacoes_l = reclamacoes_l %>%
 
 ## EDA
 
-Inicial. Faça os gráficos a mais que achar necessário para entender os dados que temos de resultado. Lembrando de nossa questão: Quão eficazes são os métodos de análise de sentimento baseados em léxicos para estimar o nível de insatisfação de reclamações recebidas pelo reclameaqui do governo federal? Existe um exemplo de EDA no repositório. Uma decisão importante a ser usada é se vamos considerar as avaliações humanas onde houve muita discordância sobre o nível de insatisfação.
+Os novos dados que temos a nossa disposição são acerca das avaliações feitas pelo nosso analisador léxico. O gráfico a seguir mostra a distribuição do grau de insatisfação dado por ele.
 
-###Como avaliar a eficácia dos métodos?  
+```{r}
+reclamacoes_l %>% 
+    ggplot(aes(x = id, 
+               y = polaridade_normalizada, 
+               color = id)) +
+    geom_jitter(alpha = 0.7) +
+    xlab("Id da Reclamação") +
+    ylab("Grau de Insatisfação (gerado pelo léxico)") +
+    ggtitle("Grau de Insatisfação de acordo com reclamações")
+```
+
+É interessante também verificar a distribuição do erro, para isso vamos utilizar um boxplot.
+
+```{r}
+reclamacoes_l %>% 
+    ggplot(aes(x = id, 
+               y = erro, 
+               color = id)) +
+    geom_boxplot() +
+    stat_boxplot(geom = 'errorbar') +
+    ylab("Erro com a avaliação humana")
+```
+
+De acordo com o gráfico, métade das avaliações tiverem um erro de até 2 pontos, o que é um valor consideravelmente bom. Há dois outliers que podem ser desconsiderados.
+
+### Como avaliar a eficácia dos métodos?  
 Uma medida interessante da eficiência desses métodos é calcular a soma dos erros ao quadrado (SSE) considerando o que o método definiu como a polaridade_normalizada e o que a avaliação humana definiu como a insatisfação.
 
 ```{r}
@@ -103,9 +129,17 @@ reclamacoes_l = reclamacoes_l %>% mutate(lexico.dummy = if_else(lexico == "senti
 
 # ggpairs(reclamacoes_l %>% select(<selecione as colulas que vc quer usar aqui>))
 # lm1 = lm(<seu modelo>)
+
+ggpairs(reclamacoes_l %>% select(insatisfacao, comprimento_reclamacao, palavras, polaridade_normalizada, erro, lexico.dummy))
+lm1 = lm(erro ~ lexico.dummy + insatisfacao, data = reclamacoes_l)
+tidy(lm1, conf.int = TRUE, conf.level = 0.95)
+glance(lm1)
+reclamacoes_l %>% 
+    add_predictions(model = lm1) %>% 
+    ggplot(aes(x = insatisfacao,
+               y = erro)) +
+    geom_point(alpha = .4) +
+    geom_line(aes(y = pred), colour = "red")
 ```
 
-**Dica** - o texto de resultado que queremos produzir é algo como: 
-
-Regressão múltipla foi utilizada para analisar se VarIndep1 e VarIndep2 tem uma associação significativa com o erro na estimativa de instatisfação da reclemação. Os resultados da regressão indicam que um modelo com os 2 preditores no formato Erro = XXX.VarIndep1 + YYY.VarIndep2 explicam XX,XX% da variância da variável de resposta (R2 = XX,XX). VarIndep1, medida como/em [unidade ou o que é o 0 e o que é 1] tem uma relação significativa com o erro (b = [yy,yy;  zz,zz], IC com 95%), assim como VarIndep2 medida como [unidade ou o que é o 0 e o que é 1] (b = [yy,yy;  zz,zz], IC com 95%). O aumento de 1 unidade de VarIndep1 produz uma mudança de...
-
+Utilizamos regressão linear para verificar se o léxico possui alguma associação com o erro. Para isso, utilizamos uma regressão múltipla em conjunto com a variável "insatisfacao". Os resultados indicam que o modelo, formado por Erro = 0.06 * lexico -0.83 * insatisfacao explica 13% da variância da variável erro. Como o intervalo de confiança de léxico contém o valor 0, não podemos concluir que há uma relação entre léxico e o erro.

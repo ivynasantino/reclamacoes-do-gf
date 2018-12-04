@@ -40,8 +40,8 @@ reclamacoes_l = reclamacoes %>%
            sentimento_op30, 
            sentimento_sent)
 
-reclamacoes_l %>% 
-    View()
+# reclamacoes_l %>% 
+#     View()
 
 ```
 
@@ -71,46 +71,59 @@ Os novos dados que temos a nossa disposição são acerca das avaliações feita
 reclamacoes_l %>% 
     ggplot(aes(x = id, 
                y = polaridade_normalizada, 
-               color = id)) +
+               color = lexico)) +
     geom_jitter(alpha = 0.7) +
     xlab("Id da Reclamação") +
     ylab("Grau de Insatisfação (gerado pelo léxico)") +
-    ggtitle("Grau de Insatisfação de acordo com reclamações")
+    ggtitle("Grau de Insatisfação de acordo com reclamações") +
+    facet_grid(~orgao)
 ```
+
+Como podemos observar no gráfico acima, houve uma distribuição similar entre os léxicos na avaliação de cada reclamação. A maioria das avaliações das reclamações permaneceram no intervalo de 2 e 4 e de acordo com o léxico sentiment_sent, o INSS obteve reclamações com grau de insatisfação menor que 2. 
 
 É interessante também verificar a distribuição do erro, para isso vamos utilizar um boxplot.
 
 ```{r}
 reclamacoes_l %>% 
-    ggplot(aes(x = id, 
-               y = erro, 
-               color = id)) +
+    ggplot(aes(x = orgao, 
+               y = erro,
+               color = polaridade_normalizada)) +
     geom_boxplot() +
-    stat_boxplot(geom = 'errorbar') +
-    ylab("Erro com a avaliação humana")
+    geom_jitter() +
+   # stat_boxplot(geom = 'errorbar') +
+    labs(title = "Distribuição do erro das reclamações",
+         x = "Órgão",
+         y = "Erro com a avaliação humana")
 ```
 
-De acordo com o gráfico, métade das avaliações tiverem um erro de até 2 pontos, o que é um valor consideravelmente bom. Há dois outliers que podem ser desconsiderados.
+De acordo com o boxplot acima, podemos observar que as reclamações que tiveram sua avaliação com valor de polaridade nos extremos(1 e 5), tiveram o erro com a avaliação humana maior. 
 
 ### Como avaliar a eficácia dos métodos?  
 Uma medida interessante da eficiência desses métodos é calcular a soma dos erros ao quadrado (SSE) considerando o que o método definiu como a polaridade_normalizada e o que a avaliação humana definiu como a insatisfação.
 
 ```{r}
 reclamacoes %>% 
-    ggplot(aes(x = sentimento_op30, y = sentimento_sent)) + 
-    geom_abline(slope = 1, intercept = 0, color = "grey") + 
+    ggplot(aes(x = sentimento_op30, 
+               y = sentimento_sent)) + 
+    geom_abline(slope = 1, 
+                intercept = 0, 
+                color = "grey") + 
     geom_count(alpha = .7) 
 ```
 
 ```{r}
 reclamacoes_l %>% 
-    ggplot(aes(x = insatisfacao, y = polaridade_normalizada, group = insatisfacao)) + 
+    ggplot(aes(x = insatisfacao, 
+               y = polaridade_normalizada, 
+               group = insatisfacao)) + 
     geom_abline(slope = 1, intercept = 0, color = "grey") + 
     geom_jitter(alpha = .7)  + 
     facet_wrap(~ lexico)
 
 reclamacoes_l %>% 
-    ggplot(aes(x = insatisfacao, y = erro, group = insatisfacao)) + 
+    ggplot(aes(x = insatisfacao, 
+               y = erro, 
+               group = insatisfacao)) + 
     geom_jitter(alpha = .5)  +
     # geom_boxplot() + 
     facet_wrap(~ lexico)
@@ -143,3 +156,36 @@ reclamacoes_l %>%
 ```
 
 Utilizamos regressão linear para verificar se o léxico possui alguma associação com o erro. Para isso, utilizamos uma regressão múltipla em conjunto com a variável "insatisfacao". Os resultados indicam que o modelo, formado por Erro = 0.06 * lexico -0.83 * insatisfacao explica 13% da variância da variável erro. Como o intervalo de confiança de léxico contém o valor 0, não podemos concluir que há uma relação entre léxico e o erro.
+
+
+tidy(lm1, conf.int = TRUE, conf.level = 0.95)
+glance(lm1)
+```{r}
+reclamacoes_l %>% 
+            select(erro,
+                   polaridade_normalizada,
+                   palavras,
+                   comprimento_reclamacao,
+                   avaliadores,
+                   insatisfacao,
+                   lexico.dummy) %>% 
+    ggpairs(progress = FALSE)
+```
+erro:
+polaridade_normalizada = 0,182
+insatisfacao = -0,361
+comprimento = -0,181
+
+```{r}
+modelo <- lm(erro ~ polaridade_normalizada + insatisfacao + comprimento_reclamacao,
+             data = reclamacoes_l)
+
+tidy(modelo, conf.int = TRUE, conf.level = 0.95)
+glance(modelo)
+```
+
+
+
+
+
+

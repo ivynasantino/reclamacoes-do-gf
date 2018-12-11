@@ -1,0 +1,220 @@
+---
+title: "Análise da precisão"
+output: html_notebook
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(here)
+library(modelr)
+library(broom)
+library(GGally)
+
+theme_set(theme_bw())
+```
+
+## Os dados
+
+```{r, warning=FALSE, message=FALSE}
+
+reclamacoes = read_csv(here("data/3-avaliacao-humana/reclamacoes-avaliadas-20181113.csv"))
+sentimentos = read_csv(here("data/5-sentimentos/sentimento.csv"))
+
+reclamacoes = reclamacoes %>% 
+    mutate(comprimento_reclamacao = str_length(reclamacao))
+```
+
+`reclamacoes_l` tem um formato long em vez de wide (explicado [aqui](https://sejdemyr.github.io/r-tutorials/basics/wide-and-long/)).
+
+```{r, message=FALSE, warning=FALSE}
+reclamacoes = reclamacoes %>% 
+    left_join(sentimentos, 
+              by = "id")
+
+reclamacoes_l = reclamacoes %>%  
+    select(-palavras_op30,
+           -palavras_sent, 
+           -grupo_avaliando) %>% 
+    gather(key = "lexico", 
+           value = "polaridade", 
+           sentimento_op30, 
+           sentimento_sent)
+
+```
+
+Converte polaridades para escala 0-5
+
+```{r, message=FALSE, warning=FALSE}
+# Faça você mesmo. Crie a variável polaridade_normalizada
+reclamacoes_l = reclamacoes_l %>% 
+    group_by(lexico) %>% 
+    mutate(polaridade_normalizada = round(((4 * (polaridade - max(polaridade))) / (min(polaridade) - max(polaridade))) + 1))
+                                    
+```
+
+Calcula o erro (SSE) por reclamação
+
+```{r}
+reclamacoes_l = reclamacoes_l %>% 
+    mutate(erro = (insatisfacao - polaridade_normalizada)**2)
+```
+
+
+## EDA
+
+Os novos dados que temos a nossa disposição são acerca das avaliações feitas pelo nosso analisador léxico. O gráfico a seguir mostra a distribuição do grau de insatisfação dado por ele.
+
+```{r}
+reclamacoes_l %>% 
+    ggplot(aes(x = id, 
+               y = polaridade_normalizada, 
+               color = lexico)) +
+    geom_jitter(alpha = 0.7) +
+    xlab("Id da Reclamação") +
+    ylab("Grau de Insatisfação (gerado pelo léxico)") +
+    ggtitle("Grau de Insatisfação de acordo com reclamações") +
+    facet_grid(~orgao)
+```
+
+Como podemos observar no gráfico acima, houve uma distribuição similar entre os léxicos na avaliação de cada reclamação. A maioria das avaliações das reclamações permaneceram no intervalo de 2 e 4 e de acordo com o léxico sentiment_sent, o INSS obteve reclamações com grau de insatisfação menor que 2. 
+
+É interessante também verificar a distribuição do erro, para isso vamos utilizar um boxplot.
+
+```{r}
+reclamacoes_l %>% 
+    ggplot(aes(x = orgao, 
+               y = erro,
+               color = insatisfacao)) +
+    geom_boxplot() +
+    geom_jitter() +
+    labs(title = "Distribuição do erro das reclamações",
+         x = "Órgão",
+         y = "Erro com a avaliação humana")
+```
+
+De acordo com o boxplot acima, podemos observar que as reclamações que tiveram sua avaliação com valor de polaridade nos extremos(1 e 5), tiveram o erro com a avaliação humana maior. 
+
+### Como avaliar a eficácia dos métodos?  
+Uma medida interessante da eficiência desses métodos é calcular a soma dos erros ao quadrado (SSE) considerando o que o método definiu como a polaridade_normalizada e o que a avaliação humana definiu como a insatisfação.
+
+```{r}
+reclamacoes_l %>% 
+    group_by(lexico,
+             orgao) %>% 
+    summarise(media = mean(erro)) %>% 
+    ungroup() %>% 
+    ggplot(aes(x = orgao,
+               y = media,
+               fill = orgao,
+               label = round(media, 2)))+
+    geom_col() +
+    geom_text(position = position_stack(vjust = .5)) +
+    guides(fill = FALSE) +
+    facet_wrap(~lexico,
+               nrow = 2) +
+    labs(title = "Média dos erros de cada léxico",
+         x = "Órgão",
+         y = "Média dos erros")
+
+```
+
+
+```{r}
+reclamacoes %>% 
+    ggplot(aes(x = sentimento_op30, 
+               y = sentimento_sent)) + 
+    geom_abline(slope = 1, 
+                intercept = 0, 
+                color = "grey") + 
+    geom_count(alpha = .7) 
+```
+
+```{r}
+reclamacoes_l %>% 
+    ggplot(aes(x = insatisfacao, 
+               y = polaridade_normalizada, 
+               group = insatisfacao)) + 
+    geom_abline(slope = 1, intercept = 0, color = "grey") + 
+    geom_jitter(alpha = .7)  + 
+    facet_wrap(~ lexico)
+
+reclamacoes_l %>% 
+    ggplot(aes(x = insatisfacao, 
+               y = erro, 
+               group = insatisfacao)) + 
+    geom_jitter(alpha = .5)  +
+    # geom_boxplot() + 
+    facet_wrap(~ lexico)
+```
+
+## Há relação entre o léxico e o erro?
+
+Agora um modelo para responder sua pergunta.
+
+```{r}
+#Cria variável dummy para preditor categórico
+reclamacoes_l = reclamacoes_l %>% mutate(lexico.dummy = if_else(lexico == "sentimento_sent", 1, 0))
+
+select_reclamacoes <- reclamacoes_l %>% 
+    select(insatisfacao, 
+           comprimento_reclamacao, 
+           palavras, 
+           polaridade_normalizada, 
+           erro, 
+           lexico.dummy)
+```
+
+```{r, message=FALSE, warning=FALSE}
+select_reclamacoes %>% 
+    ggpairs(progress = FALSE)
+```
+
+```{r}
+lm1 = lm(erro ~ lexico.dummy + insatisfacao, data = reclamacoes_l)
+tidy(lm1, conf.int = TRUE, conf.level = 0.95)
+glance(lm1)
+reclamacoes_l %>% 
+    add_predictions(model = lm1) %>% 
+    ggplot(aes(x = insatisfacao,
+               y = erro)) +
+    geom_point(alpha = .4) +
+    geom_line(aes(y = pred), colour = "red")
+```
+
+Utilizamos regressão linear para verificar se o léxico possui alguma associação com o erro. Para isso, utilizamos uma regressão múltipla em conjunto com a variável "insatisfacao". Os resultados indicam que o modelo, formado por Erro = 0.06 * lexico -0.83 * insatisfacao explica 13% da variância da variável erro. Como o intervalo de confiança de léxico contém o valor 0, não podemos concluir que há uma relação entre léxico e o erro.
+
+### Podemos dizer que existe relação entre erro e comprimento da reclamação?
+
+```{r}
+modelo2 = lm(erro ~ insatisfacao + comprimento_reclamacao, 
+             data = select_reclamacoes)
+tidy(modelo2, conf.int = TRUE, conf.level = 0.95)
+glance(modelo2)
+
+select_reclamacoes %>% 
+    add_predictions(model = modelo2) %>% 
+    ggplot(aes(x = comprimento_reclamacao,
+               y = erro)) +
+    geom_point(alpha = .4) +
+    geom_line(aes(y = pred), colour = "red")
+
+```
+Como podemos ver nos resultados acima, a variável de comprimento impacta pouco no erro.
+
+### Tomando as questões anteriores como base, qual variável tem forte influência com o erro dos léxicos?
+
+```{r}
+modelo3 = lm(erro ~ insatisfacao, 
+             data = select_reclamacoes)
+tidy(modelo3, conf.int = TRUE, conf.level = 0.95)
+glance(modelo3)
+
+select_reclamacoes %>% 
+    add_predictions(model = modelo3) %>% 
+    ggplot(aes(x = insatisfacao,
+               y = erro)) +
+    geom_point(alpha = .4) +
+    geom_line(aes(y = pred), colour = "red")
+```
+
+De acordo correlograma, a variável que tem maior correlação com o erro é da insatisfação. Dessa forma, traçamos um modelo de regressão a partir desse parâmentro e notamos que o R-srqt ainda contimua baixo.

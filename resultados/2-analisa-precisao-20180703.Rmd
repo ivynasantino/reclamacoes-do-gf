@@ -40,9 +40,6 @@ reclamacoes_l = reclamacoes %>%
            sentimento_op30, 
            sentimento_sent)
 
-# reclamacoes_l %>% 
-#     View()
-
 ```
 
 Converte polaridades para escala 0-5
@@ -125,7 +122,6 @@ reclamacoes_l %>%
                y = erro, 
                group = insatisfacao)) + 
     geom_jitter(alpha = .5)  +
-    # geom_boxplot() + 
     facet_wrap(~ lexico)
 ```
 

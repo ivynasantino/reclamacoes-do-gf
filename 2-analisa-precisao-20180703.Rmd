@@ -84,10 +84,9 @@ Como podemos observar no gráfico acima, houve uma distribuição similar entre 
 reclamacoes_l %>% 
     ggplot(aes(x = orgao, 
                y = erro,
-               color = polaridade_normalizada)) +
+               color = insatisfacao)) +
     geom_boxplot() +
     geom_jitter() +
-   # stat_boxplot(geom = 'errorbar') +
     labs(title = "Distribuição do erro das reclamações",
          x = "Órgão",
          y = "Erro com a avaliação humana")
@@ -97,6 +96,28 @@ De acordo com o boxplot acima, podemos observar que as reclamações que tiveram
 
 ### Como avaliar a eficácia dos métodos?  
 Uma medida interessante da eficiência desses métodos é calcular a soma dos erros ao quadrado (SSE) considerando o que o método definiu como a polaridade_normalizada e o que a avaliação humana definiu como a insatisfação.
+
+```{r}
+reclamacoes_l %>% 
+    group_by(lexico,
+             orgao) %>% 
+    summarise(media = mean(erro)) %>% 
+    ungroup() %>% 
+    ggplot(aes(x = orgao,
+               y = media,
+               fill = orgao,
+               label = round(media, 2)))+
+    geom_col() +
+    geom_text(position = position_stack(vjust = .5)) +
+    guides(fill = FALSE) +
+    facet_wrap(~lexico,
+               nrow = 2) +
+    labs(title = "Média dos erros de cada léxico",
+         x = "Órgão",
+         y = "Média dos erros")
+
+```
+
 
 ```{r}
 reclamacoes %>% 
@@ -122,9 +143,9 @@ reclamacoes_l %>%
                y = erro, 
                group = insatisfacao)) + 
     geom_jitter(alpha = .5)  +
+    # geom_boxplot() + 
     facet_wrap(~ lexico)
 ```
-
 
 ## Há relação entre o léxico e o erro?
 
@@ -133,13 +154,22 @@ Agora um modelo para responder sua pergunta.
 ```{r}
 #Cria variável dummy para preditor categórico
 reclamacoes_l = reclamacoes_l %>% mutate(lexico.dummy = if_else(lexico == "sentimento_sent", 1, 0))
-#Você precisa entender o que fez acima para interpretar sua regressão
-#Você pode também criar uma variável dummy para o órgao (se anac ou inss)
 
-# ggpairs(reclamacoes_l %>% select(<selecione as colulas que vc quer usar aqui>))
-# lm1 = lm(<seu modelo>)
+select_reclamacoes <- reclamacoes_l %>% 
+    select(insatisfacao, 
+           comprimento_reclamacao, 
+           palavras, 
+           polaridade_normalizada, 
+           erro, 
+           lexico.dummy)
+```
 
-ggpairs(reclamacoes_l %>% select(insatisfacao, comprimento_reclamacao, palavras, polaridade_normalizada, erro, lexico.dummy))
+```{r, message=FALSE, warning=FALSE}
+select_reclamacoes %>% 
+    ggpairs(progress = FALSE)
+```
+
+```{r}
 lm1 = lm(erro ~ lexico.dummy + insatisfacao, data = reclamacoes_l)
 tidy(lm1, conf.int = TRUE, conf.level = 0.95)
 glance(lm1)
@@ -153,35 +183,38 @@ reclamacoes_l %>%
 
 Utilizamos regressão linear para verificar se o léxico possui alguma associação com o erro. Para isso, utilizamos uma regressão múltipla em conjunto com a variável "insatisfacao". Os resultados indicam que o modelo, formado por Erro = 0.06 * lexico -0.83 * insatisfacao explica 13% da variância da variável erro. Como o intervalo de confiança de léxico contém o valor 0, não podemos concluir que há uma relação entre léxico e o erro.
 
-
-tidy(lm1, conf.int = TRUE, conf.level = 0.95)
-glance(lm1)
-```{r}
-reclamacoes_l %>% 
-            select(erro,
-                   polaridade_normalizada,
-                   palavras,
-                   comprimento_reclamacao,
-                   avaliadores,
-                   insatisfacao,
-                   lexico.dummy) %>% 
-    ggpairs(progress = FALSE)
-```
-erro:
-polaridade_normalizada = 0,182
-insatisfacao = -0,361
-comprimento = -0,181
+### Podemos dizer que existe relação entre erro e comprimento da reclamação?
 
 ```{r}
-modelo <- lm(erro ~ polaridade_normalizada + insatisfacao + comprimento_reclamacao,
-             data = reclamacoes_l)
+modelo2 = lm(erro ~ insatisfacao + comprimento_reclamacao, 
+             data = select_reclamacoes)
+tidy(modelo2, conf.int = TRUE, conf.level = 0.95)
+glance(modelo2)
 
-tidy(modelo, conf.int = TRUE, conf.level = 0.95)
-glance(modelo)
+select_reclamacoes %>% 
+    add_predictions(model = modelo2) %>% 
+    ggplot(aes(x = comprimento_reclamacao,
+               y = erro)) +
+    geom_point(alpha = .4) +
+    geom_line(aes(y = pred), colour = "red")
+
+```
+Como podemos ver nos resultados acima, a variável de comprimento impacta pouco no erro.
+
+### Tomando as questões anteriores como base, qual variável tem forte influência com o erro dos léxicos?
+
+```{r}
+modelo3 = lm(erro ~ insatisfacao, 
+             data = select_reclamacoes)
+tidy(modelo3, conf.int = TRUE, conf.level = 0.95)
+glance(modelo3)
+
+select_reclamacoes %>% 
+    add_predictions(model = modelo3) %>% 
+    ggplot(aes(x = insatisfacao,
+               y = erro)) +
+    geom_point(alpha = .4) +
+    geom_line(aes(y = pred), colour = "red")
 ```
 
-
-
-
-
-
+De acordo correlograma, a variável que tem maior correlação com o erro é da insatisfação. Dessa forma, traçamos um modelo de regressão a partir desse parâmentro e notamos que o R-srqt ainda contimua baixo.

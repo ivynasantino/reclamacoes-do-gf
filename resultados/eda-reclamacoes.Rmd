@@ -156,3 +156,18 @@ distribuicao_avaliacao(30:45)
 distribuicao_avaliacao(45:60)
 ```
 
+#### Distribuição de notas do experimento humano
+
+```{r, warning=FALSE, message=FALSE}
+reclamacoes %>% 
+    ggplot(aes(x = id, 
+               y = insatisfacao, 
+               color = avaliadores)) +
+    geom_jitter(alpha = 0.7) +
+    xlab("Id da Reclamação") +
+    ylab("Avaliação humana das reclamações") +
+    ggtitle("Grau de Insatisfação do experimento humano") +
+    facet_grid(~orgao) 
+```
+
+
